@@ -1,0 +1,197 @@
+# %%
+import pandas as pd
+import numpy as np
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import classification_report
+import re
+import string
+
+# %%
+df_fake = pd.read_csv("Fake.CSV.xls")
+df_true = pd.read_csv("True.CSV.xls")
+
+# %%
+df_fake.head(10)
+
+# %%
+df_true.head(10)
+
+# %%
+df_fake["class"] = 0
+df_true["class"] = 1
+
+# %%
+df_fake.shape,df_true.shape
+
+# %%
+df_fake_manual_testing = df_fake.tail(10)
+for i in range(23480,23470,-1):
+    df_fake.drop([i],axis = 0,inplace = True)
+df_true_manual_testing = df_true.tail(10)
+for i in range(21416,21406,-1):
+    df_true.drop([i],axis = 0,inplace = True)
+
+# %%
+df_manual_testing = pd.concat([df_fake_manual_testing, df_true_manual_testing], axis=0)
+df_manual_testing.to_csv("manual_testing.csv")
+
+# %%
+df_merge = pd.concat([df_fake,df_true], axis = 0)
+df_merge.head(10)
+
+
+# %%
+df = df_merge.drop(["title","subject","date"],axis = 1)
+df.head(10)
+
+# %%
+df = df.sample(frac = 1)
+
+# %%
+df.head(10)
+
+# %%
+df.isnull().sum()
+
+# %%
+def word_drop(text):
+    text = text.lower()  # Convert to lowercase
+    text = re.sub(r"\[.*?\]", " ", text)  # Remove text inside square brackets
+    text = re.sub(r"https?://\S+|www\.\S+", " ", text)  # Remove URLs
+    text = re.sub(r"<.*?>", " ", text)  # Remove HTML tags
+    text = re.sub(r"[%s]" % re.escape(string.punctuation), " ", text)  # Remove punctuation
+    text = re.sub(r"\n", " ", text)  # Remove newlines
+    text = re.sub(r"\w*\d\w*", " ", text)  # Remove words containing numbers
+    text = re.sub(r"\s+", " ", text).strip()  # Remove extra spaces
+    return text
+
+# %%
+df["text"] = df["text"].apply(word_drop)
+
+# %%
+df.head(10)
+
+# %%
+x = df["text"]
+y = df["class"]
+
+# %%
+x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=.25)
+
+# %%
+from sklearn.feature_extraction.text import TfidfVectorizer
+
+# %%
+vectorization = TfidfVectorizer()
+xv_train = vectorization.fit_transform(x_train)
+xv_test = vectorization.transform(x_test)
+
+# %%
+from sklearn.linear_model import LogisticRegression
+
+# %%
+###from sklearn.datasets import load_iris
+
+# %%
+"""data = load_iris()
+X, y = data.data, data.target"""
+
+# %%
+###xv_train, xv_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+# %%
+LR = LogisticRegression()
+LR.fit(xv_train, y_train)
+
+# %%
+LR.score(xv_test, y_test)
+
+# %%
+pred_LR = LR.predict(xv_test)
+
+# %%
+print(classification_report(y_test, pred_LR))
+
+# %%
+from sklearn.tree import DecisionTreeClassifier
+
+# %%
+DT = DecisionTreeClassifier()
+DT.fit(xv_train, y_train)
+
+# %%
+DT.score(xv_test, y_test)
+
+# %%
+pred_DT = DT.predict(xv_test)
+
+
+# %%
+print(classification_report(y_test, pred_DT))
+
+# %%
+from sklearn.ensemble import GradientBoostingClassifier
+
+# %%
+GBC = GradientBoostingClassifier(random_state = 0)
+GBC.fit(xv_train, y_train)
+
+# %%
+GBC.score(xv_test, y_test)
+
+# %%
+pred_GBC = GBC.predict(xv_test)
+
+
+# %%
+print(classification_report(y_test, pred_GBC))
+
+
+# %%
+from sklearn.ensemble import RandomForestClassifier
+
+# %%
+RFC = RandomForestClassifier(random_state = 0)
+RFC.fit(xv_train, y_train)
+
+# %%
+RFC.score(xv_test, y_test)
+
+# %%
+pred_RFC = RFC.predict(xv_test)
+
+# %%
+print(classification_report(y_test,pred_RFC))
+
+# %%
+def output_label(n):
+    if n == 0:
+       return "Fake News"
+    elif n == 1:
+       return "True News"
+def manual_testing(news):
+    testing_news = {"text":[news]}
+    new_def_test = pd.DataFrame(testing_news)
+    new_def_test["text"] = new_def_test["text"].apply(word_drop)
+    new_x_test=new_def_test["text"]
+    new_xv_test=vectorization.transform(new_x_test)
+    pred_LR=LR.predict(new_xv_test)
+    pred_DT=DT.predict(new_xv_test)
+    pred_GBC=GBC.predict(new_xv_test)
+    pred_RFC=RFC.predict(new_xv_test)
+    print("\n\nLR Prediction: {} \nDT Prediction: {} \nGBC Prediction: {} \nRFC Prediction: {}".format(output_label(pred_LR),output_label(pred_DT),output_label(pred_GBC),output_label(pred_RFC)))
+
+# %%
+news=str(input())
+manual_testing(news)
+
+# %%
+"""from flask import flask, render_template
+
+app = flask(__name__)
+
+@app.route("/")
+def home():
+    return render_template('index.html')"""
+
+
